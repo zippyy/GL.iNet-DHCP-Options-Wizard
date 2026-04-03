@@ -1,0 +1,13 @@
+{
+	"admin/network/dhcp-options-wizard": {
+		"title": "DHCP Options Wizard",
+		"order": 95,
+		"action": {
+			"type": "view",
+			"path": "dhcp-options-wizard"
+		},
+		"depends": {
+			"acl": [ "luci-app-gli-dhcp-options" ]
+		}
+	}
+}
