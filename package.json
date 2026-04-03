@@ -1,0 +1,20 @@
+{
+  "name": "glinet-dhcp-options-wizard",
+  "version": "0.1.0",
+  "description": "Interactive CLI wizard for generating GL.iNet/OpenWrt DHCP option configuration",
+  "type": "module",
+  "bin": {
+    "glinet-dhcp-wizard": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node ./src/cli.js"
+  },
+  "keywords": [
+    "glinet",
+    "openwrt",
+    "dhcp",
+    "wizard",
+    "cli"
+  ],
+  "license": "MIT"
+}
