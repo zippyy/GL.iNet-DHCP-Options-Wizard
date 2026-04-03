@@ -14,6 +14,18 @@ var optionDescriptions = {
 	custom_options: _('Raw code,value entries passed directly to dnsmasq/OpenWrt.')
 };
 
+var uplinkNames = {
+	wan: true,
+	wan6: true,
+	wwan: true,
+	secondwan: true,
+	multiwan: true,
+	usbwan: true,
+	tethering: true,
+	modem: true,
+	lte: true
+};
+
 function normalizeList(value) {
 	if (Array.isArray(value))
 		return value.filter(function(entry) { return entry != null && String(entry).trim() !== ''; }).map(String);
@@ -242,19 +254,42 @@ function getSectionSummary(sectionId) {
 	return details.length ? details.join(' | ') : _('No DHCP options configured yet for this section.');
 }
 
-function renderIntro(sections) {
+function isIgnoredSection(cfg) {
+	return String(cfg.ignore || '0') === '1';
+}
+
+function isUplinkSection(cfg) {
+	var name = String(cfg['.name'] || '').toLowerCase();
+	var iface = String(cfg.interface || '').toLowerCase();
+
+	return !!uplinkNames[name] || !!uplinkNames[iface];
+}
+
+function getVisibleSections(sections, showAll) {
+	return sections.filter(function(cfg) {
+		if (isIgnoredSection(cfg))
+			return false;
+
+		if (showAll)
+			return true;
+
+		return !isUplinkSection(cfg);
+	});
+}
+
+function renderIntro(allSections, visibleSections, showAll) {
 	var cards = [
 		E('div', { 'class': 'wizard-stat-card' }, [
-			E('span', { 'class': 'wizard-stat-label' }, _('DHCP sections')),
-			E('strong', { 'class': 'wizard-stat-value' }, String(sections.length))
+			E('span', { 'class': 'wizard-stat-label' }, _('Visible sections')),
+			E('strong', { 'class': 'wizard-stat-value' }, String(visibleSections.length))
 		]),
 		E('div', { 'class': 'wizard-stat-card' }, [
 			E('span', { 'class': 'wizard-stat-label' }, _('Common presets')),
 			E('strong', { 'class': 'wizard-stat-value' }, '7')
 		]),
 		E('div', { 'class': 'wizard-stat-card' }, [
-			E('span', { 'class': 'wizard-stat-label' }, _('Advanced mode')),
-			E('strong', { 'class': 'wizard-stat-value' }, _('Raw dhcp_option'))
+			E('span', { 'class': 'wizard-stat-label' }, _('Hidden uplinks')),
+			E('strong', { 'class': 'wizard-stat-value' }, String(allSections.length - visibleSections.length))
 		])
 	];
 
@@ -274,11 +309,12 @@ function renderIntro(sections) {
 		]),
 		E('span', { 'class': 'wizard-eyebrow' }, _('GL.iNet / OpenWrt')),
 		E('h2', {}, _('DHCP Options Wizard')),
-		E('p', {}, _('Shape common DHCP options without hand-editing list dhcp_option lines. Each section below maps friendly fields back into the OpenWrt dhcp config you already use.')),
+		E('p', {}, _('Shape common DHCP options without hand-editing list dhcp_option lines. By default, this page focuses on LAN-style serving networks and hides WAN or uplink sections that usually do not hand out DHCP leases.')),
 		E('ul', { 'class': 'wizard-tip-list' }, [
 			E('li', {}, _('Use Common Options for the standard DHCP fields most clients expect.')),
 			E('li', {}, _('Use Advanced for vendor-specific or binary-style code,value entries.')),
-			E('li', {}, _('Saving this page updates /etc/config/dhcp and keeps unknown raw options intact.'))
+			E('li', {}, _('Saving this page updates /etc/config/dhcp and keeps unknown raw options intact.')),
+			E('li', {}, showAll ? _('All non-ignored DHCP sections are visible right now, including uplinks.') : _('WAN and other uplink-style sections are hidden by default. Enable Show all sections below if you need them.'))
 		]),
 		E('div', { 'class': 'wizard-stat-grid' }, cards)
 	]);
@@ -290,23 +326,29 @@ return view.extend({
 	},
 
 	render: function() {
-		var m, sections;
+		var m, sections, allSections, showAll, currentUrl, toggleHref, toggleLabel;
 
 		m = new form.Map('dhcp', _('DHCP Options Wizard'),
 			_('Configure common GL.iNet/OpenWrt DHCP options with a web form. Changes are written back to each DHCP section as list dhcp_option entries.'));
 
+		allSections = uci.sections('dhcp', 'dhcp');
+		currentUrl = new URL(window.location.href);
+		showAll = currentUrl.searchParams.get('showAll') === '1';
+		sections = getVisibleSections(allSections, showAll);
+		toggleHref = new URL(window.location.href);
+		toggleHref.searchParams.set('showAll', showAll ? '0' : '1');
+		toggleLabel = showAll ? _('Hide uplink sections') : _('Show all sections');
+
 		m.render = function() {
 			return Promise.resolve(form.Map.prototype.render.apply(this, arguments)).then(function(node) {
 				return E([], [
-					renderIntro(sections),
+					renderIntro(allSections, sections, showAll),
 					node
 				]);
 			});
 		};
 
-		sections = uci.sections('dhcp', 'dhcp');
-
-		if (!sections.length) {
+		if (!allSections.length) {
 			var empty = m.section(form.TypedSection, 'dhcp', _('No DHCP sections found'));
 			empty.render = function() {
 				return E('div', { 'class': 'cbi-section' }, [
@@ -316,6 +358,30 @@ return view.extend({
 
 			return m.render();
 		}
+
+		if (!sections.length) {
+			var empty = m.section(form.TypedSection, 'dhcp', _('No DHCP sections found'));
+			empty.render = function() {
+				return E('div', { 'class': 'cbi-section' }, [
+					E('p', _('No LAN-style DHCP server sections are currently visible.')),
+					E('p', [
+						E('a', { 'class': 'btn cbi-button cbi-button-action', 'href': toggleHref.toString() }, toggleLabel)
+					])
+				]);
+			};
+
+			return m.render();
+		}
+
+		var controls = m.section(form.TypedSection, 'dhcp', _('Display filters'));
+		controls.render = function() {
+			return E('div', { 'class': 'cbi-section' }, [
+				E('p', { 'class': 'wizard-section-note' }, _('Uplink-style sections such as WAN and SecondWAN are hidden by default because DHCP options usually matter only on serving networks like LAN, Guest, IoT, or custom VLANs.')),
+				E('p', [
+					E('a', { 'class': 'btn cbi-button cbi-button-action', 'href': toggleHref.toString() }, toggleLabel)
+				])
+			]);
+		};
 
 		sections.forEach(function(cfg) {
 			var s, o, summary;
