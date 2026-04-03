@@ -7,11 +7,23 @@ The tool does not connect to your router. It collects inputs, validates common D
 - `uci` commands you can paste into an SSH session on the router
 - a `/etc/config/dhcp` snippet you can apply manually
 
-## Requirements
+## Router Install
 
-- Node.js 22 or newer
+```bash
+wget -O- https://raw.githubusercontent.com/zippyy/GL.iNet-DHCP-Options-Wizard/main/install.sh | sh
+```
 
-## Install
+Then run:
+
+```bash
+glinet-dhcp-wizard
+```
+
+This installs the POSIX shell version directly on a GL.iNet/OpenWrt router at `/usr/bin/glinet-dhcp-wizard`.
+
+## Workstation Install
+
+If you want to run the Node.js version on a laptop or desktop:
 
 ```bash
 npm install -g git+https://github.com/zippyy/GL.iNet-DHCP-Options-Wizard.git
@@ -23,7 +35,13 @@ Then run:
 glinet-dhcp-wizard
 ```
 
-## Run
+## Development Run
+
+Requirements:
+
+- Node.js 22 or newer
+
+Run:
 
 ```bash
 npm start
@@ -60,3 +78,4 @@ uci commit dhcp
 
 - On GL.iNet/OpenWrt, these entries map to `list dhcp_option` in `/etc/config/dhcp`.
 - Some DHCP options expect specific encoding or payload formats. For those, use the custom option path and provide the exact raw value expected by `dnsmasq`.
+- The router install uses the `glinet-dhcp-wizard.sh` shell implementation. The Node CLI in `src/cli.js` remains available for workstation use.
