@@ -1,13 +1,34 @@
 # GL.iNet DHCP Options Wizard
 
-Interactive CLI wizard for building DHCP option entries that can be applied on GL.iNet routers running OpenWrt.
+LuCI plugin and companion CLI tools for building DHCP option entries on GL.iNet routers running OpenWrt.
 
-The tool does not connect to your router. It collects inputs, validates common DHCP option payloads, and generates:
+The LuCI app writes directly to `/etc/config/dhcp` through UCI. The companion CLI tools remain available for shell-driven workflows and generate:
 
 - `uci` commands you can paste into an SSH session on the router
 - a `/etc/config/dhcp` snippet you can apply manually
 
-## Router Install
+## LuCI Plugin
+
+This branch now includes an OpenWrt/LuCI package scaffold:
+
+- `Makefile`
+- `htdocs/luci-static/resources/view/dhcp-options-wizard.js`
+- `root/usr/share/luci/menu.d/luci-app-gli-dhcp-options.json`
+- `root/usr/share/rpcd/acl.d/luci-app-gli-dhcp-options.json`
+
+The web UI appears under `Network -> DHCP Options Wizard` and edits `list dhcp_option` values for each `config dhcp` section.
+
+To build it inside an OpenWrt buildroot, place this repository in your package feed and compile `luci-app-gli-dhcp-options`.
+
+For direct router install on this branch:
+
+```sh
+wget -O- https://raw.githubusercontent.com/zippyy/GL.iNet-DHCP-Options-Wizard/feature/luci-plugin/install-luci.sh | sh
+```
+
+That installer places the LuCI view, menu entry, and ACL files directly on the router, then restarts `rpcd` and `uhttpd`.
+
+## Router CLI Install
 
 ```bash
 wget -O- https://raw.githubusercontent.com/zippyy/GL.iNet-DHCP-Options-Wizard/main/install.sh | sh

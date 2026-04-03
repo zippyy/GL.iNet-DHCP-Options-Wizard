@@ -1,0 +1,11 @@
+{
+	"luci-app-gli-dhcp-options": {
+		"description": "Grant access to the DHCP Options Wizard",
+		"read": {
+			"uci": [ "dhcp" ]
+		},
+		"write": {
+			"uci": [ "dhcp" ]
+		}
+	}
+}
